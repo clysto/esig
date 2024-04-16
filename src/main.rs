@@ -1,7 +1,9 @@
 mod app;
 mod fft;
 mod open_dialog;
-mod sig;
+mod signal_plot;
+mod psd_dialog;
+mod series;
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions::default();
