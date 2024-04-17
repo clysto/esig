@@ -1,7 +1,7 @@
 use crate::series::MultiResolutionSeries;
 use crate::signal_plot::Signal;
+use eframe::egui::Widget;
 use eframe::egui::{self, Align2, Grid};
-use emath::vec2;
 use rustfft::num_complex::Complex;
 use std::fs::File;
 use std::io::Read;
@@ -42,6 +42,8 @@ impl OpenDialog {
             .anchor(Align2::CENTER_CENTER, egui::Vec2::ZERO)
             .collapsible(false)
             .resizable(false)
+            .default_width(300.)
+            .max_width(300.)
             .show(ctx, |ui| {
                 ui.vertical_centered_justified(|ui| {
                     Grid::new("open-file-options")
@@ -49,25 +51,33 @@ impl OpenDialog {
                         .striped(false)
                         .show(ui, |ui| {
                             ui.label("File");
-                            ui.horizontal(|ui| {
-                                ui.add_sized(
-                                    vec2(200.0, 18.0),
-                                    egui::TextEdit::singleline(&mut self.path),
-                                );
-                                if ui.button("Browse").clicked() {
-                                    let path = rfd::FileDialog::new().pick_file();
-                                    if path.is_some() {
-                                        self.path = path.unwrap().to_str().unwrap().to_owned();
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui.button("Browse").clicked() {
+                                        let path = rfd::FileDialog::new().pick_file();
+                                        if path.is_some() {
+                                            self.path = path.unwrap().to_str().unwrap().to_owned();
+                                        }
                                     }
-                                }
-                            });
+                                    ui.with_layout(
+                                        egui::Layout::top_down_justified(egui::Align::LEFT),
+                                        |ui| {
+                                            egui::TextEdit::singleline(&mut self.path).ui(ui);
+                                        },
+                                    );
+                                },
+                            );
                             ui.end_row();
                             ui.label("Sample Rate");
-                            ui.add_sized(
-                                vec2(200.0, 18.0),
-                                egui::DragValue::new(&mut self.sample_rate)
-                                    .speed(1.0)
-                                    .suffix(" Hz"),
+                            ui.with_layout(
+                                egui::Layout::top_down_justified(egui::Align::LEFT),
+                                |ui| {
+                                    egui::DragValue::new(&mut self.sample_rate)
+                                        .speed(1.0)
+                                        .suffix(" Hz")
+                                        .ui(ui);
+                                },
                             );
                             ui.end_row();
                             ui.label("Signal Type");
@@ -76,7 +86,7 @@ impl OpenDialog {
                                     SignalType::Float32 => "float32",
                                     SignalType::Complex64 => "complex64",
                                 })
-                                .width(200.)
+                                .width(ui.available_width())
                                 .show_ui(ui, |ui| {
                                     ui.style_mut().wrap = Some(false);
                                     ui.selectable_value(

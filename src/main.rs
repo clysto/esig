@@ -10,6 +10,6 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "esig",
         native_options,
-        Box::new(|_cc| Box::new(app::App::new())),
+        Box::new(|cc| Box::new(app::App::new(cc))),
     )
 }

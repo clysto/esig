@@ -14,6 +14,19 @@ pub fn compute_psd(
     noverlap: usize,
     sample_rate: f64,
 ) -> (Vec<f64>, Vec<f64>) {
+    if input.len() < nfft {
+        return compute_psd(
+            &input
+                .iter()
+                .chain(std::iter::repeat(&Complex::new(0.0, 0.0)))
+                .take(nfft)
+                .copied()
+                .collect::<Vec<Complex<f64>>>(),
+            nfft,
+            noverlap,
+            sample_rate,
+        );
+    }
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(nfft);
     let window = hanning_window(nfft);

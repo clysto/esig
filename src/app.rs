@@ -30,7 +30,20 @@ impl Default for App {
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let ctx = &cc.egui_ctx;
+        let mut fonts = egui::FontDefinitions::default();
+        fonts.font_data.insert(
+            "noto".to_owned(),
+            egui::FontData::from_static(include_bytes!("../assets/NotoSansSC-Regular.ttf")),
+        );
+        // 中文支持
+        fonts
+            .families
+            .entry(egui::FontFamily::Proportional)
+            .or_default()
+            .push("noto".to_owned());
+        ctx.set_fonts(fonts);
         Self::default()
     }
 }
