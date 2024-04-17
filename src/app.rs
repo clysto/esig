@@ -99,7 +99,7 @@ impl eframe::App for App {
                     if ui.button(format!("{GITHUB} esig on GitHub")).clicked() {
                         ui.close_menu();
                         ctx.open_url(OpenUrl {
-                            url: "https://github.com/emilk/egui".to_owned(),
+                            url: "https://github.com/clysto/esig".to_owned(),
                             new_tab: true,
                         })
                     }
@@ -108,6 +108,18 @@ impl eframe::App for App {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                if ui.button("Reset View").clicked() {
+                    self.signal_plot.reset_view();
+                }
+
+                if ui.button("Return").clicked() {
+                    self.signal_plot.return_last_view();
+                }
+            });
+
+            ui.add_space(4.);
+
             self.signal_plot.show(ui);
 
             let sig = self.open_dialog.show(ctx, &mut self.open_dialog_visible);
