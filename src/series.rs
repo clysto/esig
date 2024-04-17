@@ -64,7 +64,7 @@ impl<T: Downconvert<T> + Clone> MultiResolutionSeries<T> {
         };
         let mut ratio = 2;
         while data.len() / ratio > min_len {
-            s.data.push(T::minmax_downconvert(data, ratio));
+            s.data.push(T::minmax_downconvert(s.data.last().unwrap(), 2));
             println!("x{}", ratio);
             ratio <<= 1;
         }
