@@ -1,12 +1,14 @@
 use crate::fft::compute_psd;
+use crate::menubar::{MenuBar, MenuItem};
 use crate::open_dialog::OpenDialog;
 use crate::psd_dialog::PsdDialog;
 use crate::signal_plot::{Signal, SignalPlot};
-use eframe::egui::{self, Button, Key, KeyboardShortcut, Modifiers, OpenUrl, Widget};
+use eframe::egui::{self, Key, Modifiers};
 use rustfft::num_complex::Complex;
 
 pub struct App {
     open_dialog: OpenDialog,
+    menubar: MenuBar,
     psd_dialog: PsdDialog,
     open_dialog_visible: bool,
     psd_dialog_visible: bool,
@@ -17,19 +19,30 @@ pub struct App {
 
 impl Default for App {
     fn default() -> Self {
-        Self {
+        let mut ret = Self {
             open_dialog: OpenDialog::default(),
+            menubar: MenuBar::new(),
             psd_dialog: PsdDialog::default(),
             open_dialog_visible: false,
             psd_dialog_visible: false,
             sample_rate: 1,
             psd_visiable: false,
             signal_plot: SignalPlot::new(),
-        }
+        };
+        ret.setup();
+        ret
     }
 }
 
 impl App {
+    const OPEN: u32 = 0;
+    const EXPORT: u32 = 1;
+    const QUIT: u32 = 2;
+    const RESET: u32 = 3;
+    const RETURN: u32 = 4;
+    const PSD: u32 = 5;
+    const ABOUT: u32 = 6;
+
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let ctx = &cc.egui_ctx;
         let mut fonts = egui::FontDefinitions::default();
@@ -46,93 +59,86 @@ impl App {
         ctx.set_fonts(fonts);
         Self::default()
     }
+
+    pub fn setup(&mut self) {
+        self.menubar.add(MenuItem::new(
+            "File",
+            &[
+                MenuItem::single_with_shortcut(Self::OPEN, "Open", Modifiers::COMMAND, Key::O),
+                MenuItem::single_with_shortcut(Self::EXPORT, "Export", Modifiers::COMMAND, Key::S),
+                MenuItem::separator(),
+                MenuItem::single_with_shortcut(Self::QUIT, "Quit", Modifiers::COMMAND, Key::Q),
+            ],
+        ));
+        self.menubar.add(MenuItem::new(
+            "View",
+            &[
+                MenuItem::single(Self::RESET, "Reset"),
+                MenuItem::single(Self::RETURN, "Return"),
+                MenuItem::single_with_shortcut(Self::PSD, "PSD", Modifiers::COMMAND, Key::P),
+            ],
+        ));
+        self.menubar.add(MenuItem::new(
+            "Help",
+            &[MenuItem::single(Self::ABOUT, "About")],
+        ));
+    }
+
+    pub fn psd(&mut self) {
+        if self.signal_plot.have_signal() {
+            self.psd_visiable = true;
+            let mut input = vec![];
+            match self.signal_plot.signal() {
+                Signal::Real(sig) => {
+                    for s in sig.get(self.signal_plot.range(), 1).iter() {
+                        input.push(Complex::new(*s as f64, 0.0));
+                    }
+                }
+                Signal::Complex(sig) => {
+                    for s in sig.get(self.signal_plot.range(), 1).iter() {
+                        input.push(Complex::new(s.re as f64, s.im as f64));
+                    }
+                }
+            }
+            let (freqs, psd) = compute_psd(&input, 1024, 0, self.sample_rate as f64);
+            self.psd_dialog.set_data(freqs, psd);
+            self.psd_dialog_visible = true;
+        }
+    }
+
+    pub fn show_menubar(&mut self, ui: &mut egui::Ui) {
+        self.menubar.show(ui);
+        if let Some(action) = self.menubar.comsume_action(ui) {
+            match action {
+                &Self::OPEN => {
+                    self.open_dialog_visible = true;
+                }
+                &Self::EXPORT => {}
+                &Self::QUIT => {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+                &Self::RESET => {
+                    self.signal_plot.reset_view();
+                }
+                &Self::RETURN => {
+                    self.signal_plot.return_last_view();
+                }
+                &Self::PSD => {
+                    self.psd();
+                }
+                _ => {}
+            }
+        }
+    }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            if ui.ctx().input_mut(|input| {
-                input.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::O))
-            }) {
-                self.open_dialog_visible = true;
-            }
-            egui::menu::bar(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    let shortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::O);
-                    if Button::new("Open")
-                        .shortcut_text(ui.ctx().format_shortcut(&shortcut))
-                        .ui(ui)
-                        .clicked()
-                    {
-                        ui.close_menu();
-                        self.open_dialog_visible = true;
-                    }
-                    ui.separator();
-                    if ui.button("Quit").clicked() {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                });
-                ui.menu_button("Edit", |ui| {
-                    if ui.button("Save Current").clicked() {}
-                    if ui.button("PSD").clicked() {
-                        ui.close_menu();
-                        self.psd_visiable = true;
-                        if self.signal_plot.have_signal() {
-                            let mut input = vec![];
-                            match self.signal_plot.signal() {
-                                Signal::Real(sig) => {
-                                    for s in sig.get(self.signal_plot.range(), 1).iter() {
-                                        input.push(Complex::new(*s as f64, 0.0));
-                                    }
-                                }
-                                Signal::Complex(sig) => {
-                                    for s in sig.get(self.signal_plot.range(), 1).iter() {
-                                        input.push(Complex::new(s.re as f64, s.im as f64));
-                                    }
-                                }
-                            }
-                            let (freqs, psd) =
-                                compute_psd(&input, 1024, 0, self.sample_rate as f64);
-                            self.psd_dialog.set_data(freqs, psd);
-                            self.psd_dialog_visible = true;
-                        }
-                    }
-                });
-                ui.menu_button("About", |ui| {
-                    if ui.button("Toggle Dark/Light").clicked() {
-                        ui.close_menu();
-                        let visuals = if ui.visuals().dark_mode {
-                            egui::Visuals::light()
-                        } else {
-                            egui::Visuals::dark()
-                        };
-                        ctx.set_visuals(visuals);
-                    }
-                    use egui::special_emojis::GITHUB;
-                    if ui.button(format!("{GITHUB} esig on GitHub")).clicked() {
-                        ui.close_menu();
-                        ctx.open_url(OpenUrl {
-                            url: "https://github.com/clysto/esig".to_owned(),
-                            new_tab: true,
-                        })
-                    }
-                });
-            });
+            self.show_menubar(ui);
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                if ui.button("Reset View").clicked() {
-                    self.signal_plot.reset_view();
-                }
-
-                if ui.button("Return").clicked() {
-                    self.signal_plot.return_last_view();
-                }
-            });
-
-            ui.add_space(4.);
-
             self.signal_plot.show(ui);
 
             let sig = self.open_dialog.show(ctx, &mut self.open_dialog_visible);
