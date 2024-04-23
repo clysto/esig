@@ -64,7 +64,8 @@ impl<T: Downconvert<T> + Clone> MultiResolutionSeries<T> {
         };
         let mut ratio = 2;
         while data.len() / ratio > min_len {
-            s.data.push(T::minmax_downconvert(s.data.last().unwrap(), 2));
+            s.data
+                .push(T::minmax_downconvert(s.data.last().unwrap(), 2));
             println!("x{}", ratio);
             ratio <<= 1;
         }
@@ -73,7 +74,7 @@ impl<T: Downconvert<T> + Clone> MultiResolutionSeries<T> {
 
     pub fn get(&self, range: std::ops::Range<usize>, ratio: usize) -> &[T] {
         assert!((ratio & (ratio - 1)) == 0);
-        let start = range.start / ratio;
+        let start = (range.start / ratio).min(self.data[0].len() / ratio);
         let end = (range.end / ratio).min(self.data[0].len() / ratio);
         &self.data[ratio.trailing_zeros() as usize][start..end]
     }

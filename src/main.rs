@@ -5,6 +5,7 @@ mod signal_plot;
 mod psd_dialog;
 mod series;
 mod menubar;
+mod export_dialog;
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions::default();

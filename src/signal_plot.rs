@@ -66,9 +66,7 @@ impl SignalPlot {
                 }
                 let mut bounds = plot_ui.plot_bounds();
                 if self.reset_view {
-                    let mut reset_bounds = bounds.clone();
-                    reset_bounds.set_y(&PlotBounds::from_min_max([0., -0.99], [2048., 1.]));
-                    plot_ui.set_plot_bounds(reset_bounds);
+                    plot_ui.set_plot_bounds(PlotBounds::from_min_max([0., -0.99], [2048., 1.]));
                     self.reset_view = false;
                 } else if self.reset_to_last_view {
                     if let Some(bounds) = self.zoom_history.pop() {
