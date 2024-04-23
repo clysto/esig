@@ -1,11 +1,11 @@
 mod app;
+mod export_dialog;
 mod fft;
+mod menubar;
 mod open_dialog;
-mod signal_plot;
 mod psd_dialog;
 mod series;
-mod menubar;
-mod export_dialog;
+mod signal_plot;
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions::default();
