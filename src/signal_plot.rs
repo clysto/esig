@@ -14,7 +14,10 @@ pub struct SignalPlot {
     first_render: bool,
     reset_view: bool,
     reset_to_last_view: bool,
+    x_axis_time: bool,
+    sample_rate: u32,
     zoom_history: Vec<PlotBounds>,
+    bounds: PlotBounds,
 }
 
 fn auto_ratio(max_points: usize, max_ratio: usize, nsamples: usize) -> usize {
@@ -36,7 +39,10 @@ impl SignalPlot {
             first_render: true,
             reset_view: false,
             reset_to_last_view: false,
+            x_axis_time: true,
+            sample_rate: 1,
             zoom_history: Vec::new(),
+            bounds: PlotBounds::from_min_max([0., 0.], [0., 0.]),
         }
     }
 
@@ -50,6 +56,13 @@ impl SignalPlot {
             space_pressed = true;
         }
         let max_samples = (ui.available_width() * 2.5) as usize;
+        let x_label = if self.x_axis_time {
+            "Time (s)"
+        } else {
+            "Samples"
+        };
+        let sample_rate = self.sample_rate;
+        let x_axis_time = self.x_axis_time;
         egui_plot::Plot::new("signal")
             .legend(Legend::default())
             .auto_bounds(Vec2b::new(false, false))
@@ -58,15 +71,40 @@ impl SignalPlot {
             .allow_drag(space_pressed)
             .allow_boxed_zoom(!space_pressed)
             .boxed_zoom_pointer_button(egui::PointerButton::Primary)
-            .x_axis_label("Samples")
+            .x_axis_formatter(move |mark, _size, _range| {
+                if x_axis_time {
+                    let time = mark.value as f64 / sample_rate as f64;
+                    format!("{}", time)
+                } else {
+                    format!("{}", mark.value)
+                }
+            })
+            .x_axis_label(x_label)
             .show(ui, |plot_ui| {
                 if self.first_render {
-                    plot_ui.set_plot_bounds(PlotBounds::from_min_max([0., -0.99], [2048., 1.]));
+                    plot_ui.set_plot_bounds(PlotBounds::from_min_max([0., -0.99], [1000., 1.]));
                     self.first_render = false;
                 }
                 let mut bounds = plot_ui.plot_bounds();
                 if self.reset_view {
-                    plot_ui.set_plot_bounds(PlotBounds::from_min_max([0., -0.99], [2048., 1.]));
+                    if let Some(sig) = self.signal.as_ref() {
+                        match sig {
+                            Signal::Real(sig) => {
+                                plot_ui.set_plot_bounds(PlotBounds::from_min_max(
+                                    [0., -0.99],
+                                    [sig.len() as f64, 1.],
+                                ));
+                            }
+                            Signal::Complex(sig) => {
+                                plot_ui.set_plot_bounds(PlotBounds::from_min_max(
+                                    [0., -0.99],
+                                    [sig.len() as f64, 1.],
+                                ));
+                            }
+                        }
+                    } else {
+                        plot_ui.set_plot_bounds(PlotBounds::from_min_max([0., -0.99], [1000., 1.]));
+                    }
                     self.reset_view = false;
                 } else if self.reset_to_last_view {
                     if let Some(bounds) = self.zoom_history.pop() {
@@ -81,6 +119,7 @@ impl SignalPlot {
                     self.zoom_history.push(bounds.clone());
                 }
                 bounds = plot_ui.plot_bounds();
+                self.bounds = bounds.clone();
                 let x1 = *bounds.range_x().start();
                 let x2 = *bounds.range_x().end();
                 let index_start = x1.floor().max(0.) as usize;
@@ -127,6 +166,7 @@ impl SignalPlot {
     }
 
     pub fn set_signal(&mut self, signal: Signal) {
+        self.zoom_history.clear();
         self.signal = Some(signal);
     }
 
@@ -146,7 +186,15 @@ impl SignalPlot {
         self.reset_view = true;
     }
 
+    pub fn bounds(&self) -> PlotBounds {
+        self.bounds.clone()
+    }
+
     pub fn return_last_view(&mut self) {
         self.reset_to_last_view = true;
+    }
+
+    pub fn set_sample_rate(&mut self, sample_rate: u32) {
+        self.sample_rate = sample_rate;
     }
 }

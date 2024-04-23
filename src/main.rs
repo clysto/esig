@@ -6,6 +6,7 @@ mod open_dialog;
 mod psd_dialog;
 mod series;
 mod signal_plot;
+mod utils;
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions::default();

@@ -82,4 +82,8 @@ impl<T: Downconvert<T> + Clone> MultiResolutionSeries<T> {
     pub fn max_ratio(&self) -> usize {
         1 << (self.data.len() - 1)
     }
+
+    pub fn len(&self) -> usize {
+        self.data[0].len()
+    }
 }

@@ -4,6 +4,7 @@ use crate::menubar::{MenuBar, MenuItem};
 use crate::open_dialog::OpenDialog;
 use crate::psd_dialog::PsdDialog;
 use crate::signal_plot::{Signal, SignalPlot};
+use crate::utils::human_readable_time;
 use eframe::egui::{self, Key, Modifiers};
 use rustfft::num_complex::Complex;
 use std::fs::File;
@@ -21,6 +22,7 @@ pub struct App {
     sample_rate: u32,
     psd_visiable: bool,
     signal_plot: SignalPlot,
+    signal_path: String,
 }
 
 impl Default for App {
@@ -36,6 +38,7 @@ impl Default for App {
             sample_rate: 1,
             psd_visiable: false,
             signal_plot: SignalPlot::new(),
+            signal_path: "".to_owned(),
         };
         ret.setup();
         ret
@@ -65,6 +68,8 @@ impl App {
             .or_default()
             .push("noto".to_owned());
         ctx.set_fonts(fonts);
+        // dark mode
+        ctx.set_visuals(egui::Visuals::dark());
         Self::default()
     }
 
@@ -81,8 +86,14 @@ impl App {
         self.menubar.add(MenuItem::new(
             "View",
             &[
-                MenuItem::single(Self::RESET, "Reset"),
-                MenuItem::single(Self::RETURN, "Return"),
+                MenuItem::single_with_shortcut(Self::RESET, "Reset", Modifiers::COMMAND, Key::R),
+                MenuItem::single_with_shortcut(
+                    Self::RETURN,
+                    "Return",
+                    Modifiers::COMMAND,
+                    Key::ArrowUp,
+                ),
+                MenuItem::separator(),
                 MenuItem::single_with_shortcut(Self::PSD, "PSD", Modifiers::COMMAND, Key::P),
             ],
         ));
@@ -132,8 +143,7 @@ impl App {
             }
             unsafe {
                 let mut file = File::create(path).unwrap();
-                let slice =
-                    slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4);
+                let slice = slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4);
                 file.write_all(slice).unwrap();
             }
         }
@@ -174,27 +184,45 @@ impl eframe::App for App {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             self.show_menubar(ui);
         });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            self.signal_plot.show(ui);
-
-            let sig = self.open_dialog.show(ctx, &mut self.open_dialog_visible);
-            if sig.is_some() {
-                self.open_dialog_visible = false;
-                self.signal_plot.set_signal(sig.unwrap());
-                self.signal_plot.reset_view();
-                self.sample_rate = self.open_dialog.sample_rate();
-            }
-
-            let export_path = self
-                .export_dialog
-                .show(ctx, &mut self.export_dialog_visible);
-            if export_path.is_some() {
-                self.export_dialog_visible = false;
-                self.export(export_path.unwrap().to_str().unwrap());
-            }
-
-            self.psd_dialog.show(ctx, &mut self.psd_dialog_visible);
+        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(&self.signal_path);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let samples_in_window = self.signal_plot.range().len();
+                    let ns_in_window = self.signal_plot.bounds().width() / self.sample_rate as f64;
+                    ui.label(human_readable_time(ns_in_window));
+                    ui.label(format!("{} samples", samples_in_window));
+                })
+            });
         });
+        egui::CentralPanel::default()
+            .frame(
+                egui::Frame::default()
+                    .fill(egui::Color32::BLACK)
+                    .inner_margin(5.),
+            )
+            .show(ctx, |ui| {
+                self.signal_plot.show(ui);
+
+                if let Some((sig, path)) = self.open_dialog.show(ctx, &mut self.open_dialog_visible)
+                {
+                    self.open_dialog_visible = false;
+                    self.signal_path = path;
+                    self.signal_plot.set_signal(sig);
+                    self.signal_plot.reset_view();
+                    self.sample_rate = self.open_dialog.sample_rate();
+                    self.signal_plot.set_sample_rate(self.sample_rate);
+                }
+
+                let export_path = self
+                    .export_dialog
+                    .show(ctx, &mut self.export_dialog_visible);
+                if export_path.is_some() {
+                    self.export_dialog_visible = false;
+                    self.export(export_path.unwrap().to_str().unwrap());
+                }
+
+                self.psd_dialog.show(ctx, &mut self.psd_dialog_visible);
+            });
     }
 }

@@ -25,7 +25,7 @@ impl Default for OpenDialog {
     fn default() -> Self {
         Self {
             path: "".to_owned(),
-            sample_rate: 1,
+            sample_rate: 2000000,
             signal_type: SignalType::Float32,
             task: None,
         }
@@ -33,7 +33,7 @@ impl Default for OpenDialog {
 }
 
 impl OpenDialog {
-    pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) -> Option<Signal> {
+    pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) -> Option<(Signal, String)> {
         if self.task.is_some() {
             *open = true;
         }
@@ -74,8 +74,45 @@ impl OpenDialog {
                                 egui::Layout::top_down_justified(egui::Align::LEFT),
                                 |ui| {
                                     egui::DragValue::new(&mut self.sample_rate)
+                                        .custom_formatter(|f, _range| {
+                                            if f < 1_000.0 {
+                                                return format!("{:.0} Hz", f);
+                                            }
+                                            if f < 1_000_000.0 {
+                                                return format!("{} kHz", f / 1_000.0);
+                                            }
+                                            if f < 1_000_000_000.0 {
+                                                return format!("{} MHz", f / 1_000_000.0);
+                                            }
+                                            format!("{} GHz", f / 1_000_000_000.0)
+                                        })
+                                        .custom_parser(|str| {
+                                            // str 1000hz 1000mhz 1000 MHz 10GHz 200 GhZ is valid
+                                            let mut str = str.to_owned();
+                                            str.make_ascii_lowercase();
+                                            let num = str.trim_end_matches(|c: char| {
+                                                c.is_alphabetic() && c != 'e' && c != '.'
+                                            });
+                                            let mut unit = str.trim_start_matches(|c: char| {
+                                                c.is_numeric() || c == '.' || c == 'e'
+                                            });
+                                            if unit.is_empty() {
+                                                unit = "hz";
+                                            }
+                                            let num = num.parse::<f64>();
+                                            if num.is_err() {
+                                                return None;
+                                            }
+                                            let num = num.unwrap();
+                                            match unit {
+                                                "hz" => return Some(num),
+                                                "khz" => return Some(num * 1_000.0),
+                                                "mhz" => return Some(num * 1_000_000.0),
+                                                "ghz" => return Some(num * 1_000_000_000.0),
+                                                _ => return None,
+                                            }
+                                        })
                                         .speed(1.0)
-                                        .suffix(" Hz")
                                         .ui(ui);
                                 },
                             );
@@ -122,7 +159,7 @@ impl OpenDialog {
             if result.is_ok() {
                 *open = false;
                 self.task = None;
-                return result.unwrap();
+                return Some((result.unwrap().unwrap(), self.path.clone()));
             }
         }
         None
