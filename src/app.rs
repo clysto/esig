@@ -188,10 +188,8 @@ impl eframe::App for App {
             ui.horizontal(|ui| {
                 ui.label(&self.signal_path);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let samples_in_window = self.signal_plot.range().len();
-                    let ns_in_window = self.signal_plot.bounds().width() / self.sample_rate as f64;
-                    ui.label(human_readable_time(ns_in_window));
-                    ui.label(format!("{} samples", samples_in_window));
+                    ui.label(human_readable_time(self.signal_plot.window_time()));
+                    ui.label(format!("{} samples", self.signal_plot.window_samples()));
                 })
             });
         });

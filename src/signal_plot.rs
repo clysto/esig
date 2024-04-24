@@ -120,17 +120,22 @@ impl SignalPlot {
                 }
                 bounds = plot_ui.plot_bounds();
                 self.bounds = bounds.clone();
-                let x1 = *bounds.range_x().start();
-                let x2 = *bounds.range_x().end();
-                let index_start = x1.floor().max(0.) as usize;
-                let index_end = x2.ceil() as usize + 1;
-                if index_end <= index_start || self.signal.is_none() {
+
+                if self.signal.is_none() {
                     return;
                 }
                 let signal = self.signal.as_ref().unwrap();
-                self.range = index_start..index_end;
+
+                let x1 = *bounds.range_x().start();
+                let x2 = *bounds.range_x().end();
                 match signal {
                     Signal::Real(signal) => {
+                        let index_start = x1.floor().max(0.) as usize;
+                        let index_end = x2.ceil().min(signal.len() as f64) as usize + 1;
+                        if index_end <= index_start {
+                            return;
+                        }
+                        self.range = index_start..index_end;
                         let ratio =
                             auto_ratio(max_samples, signal.max_ratio(), index_end - index_start);
                         let data = signal.get(index_start..index_end, ratio);
@@ -143,6 +148,12 @@ impl SignalPlot {
                         plot_ui.line(Line::new(re).name("inphase"));
                     }
                     Signal::Complex(signal) => {
+                        let index_start = x1.floor().max(0.) as usize;
+                        let index_end = x2.ceil().min(signal.len() as f64) as usize + 1;
+                        if index_end <= index_start {
+                            return;
+                        }
+                        self.range = index_start..index_end;
                         let ratio =
                             auto_ratio(max_samples, signal.max_ratio(), index_end - index_start);
                         let data = signal.get(index_start..index_end, ratio);
@@ -186,15 +197,39 @@ impl SignalPlot {
         self.reset_view = true;
     }
 
-    pub fn bounds(&self) -> PlotBounds {
-        self.bounds.clone()
-    }
-
     pub fn return_last_view(&mut self) {
         self.reset_to_last_view = true;
     }
 
     pub fn set_sample_rate(&mut self, sample_rate: u32) {
         self.sample_rate = sample_rate;
+    }
+
+    pub fn window_time(&self) -> f64 {
+        let range_x = self.bounds.range_x();
+        let x1 = *range_x.start();
+        let x2 = *range_x.end();
+        (x2 - x1) / self.sample_rate as f64
+    }
+
+    pub fn window_samples(&self) -> usize {
+        if self.signal.is_none() {
+            return 0;
+        }
+        let range_x = self.bounds.range_x();
+        let x1 = range_x.start().ceil() as usize;
+        let x2 = range_x.end().floor() as usize;
+        let mut index_start = self.range.start;
+        let mut index_end = self.range.end;
+        if index_start < x1 {
+            index_start += 1;
+        }
+        if index_end >= x2 {
+            index_end -= 1;
+        }
+        if index_end >= x2 {
+            index_end -= 1;
+        }
+        index_end + 1 - index_start
     }
 }

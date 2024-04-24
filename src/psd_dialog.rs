@@ -25,7 +25,7 @@ impl PsdDialog {
                 egui_plot::Plot::new("psd")
                     .set_margin_fraction(vec2(0., 0.1))
                     .x_axis_label("Frequency")
-                    .y_axis_label("PSD (dB)")
+                    .y_axis_label("Power Spectral Density (dB)")
                     .show(ui, |plot_ui| {
                         let line = Line::new(PlotPoints::new(
                             self.freqs

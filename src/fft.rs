@@ -46,7 +46,7 @@ pub fn compute_psd(
             // 计算并返回每个段的功率谱
             windowed_segment
                 .iter()
-                .map(|&x| x.norm_sqr() / (nfft as f64 * window.iter().map(|&w| w * w).sum::<f64>()))
+                .map(|&x| x.norm_sqr() / (window.iter().sum::<f64>() * window.iter().sum::<f64>()))
                 .collect::<Vec<f64>>()
         })
         .reduce_with(|mut a, b| {
@@ -57,7 +57,7 @@ pub fn compute_psd(
         })
         .unwrap_or_else(|| vec![0.0; nfft]);
     // 计算平均功率谱
-    let count = (input.len() - nfft + 1) as f64 / step as f64;
+    let count = ((input.len() - nfft + 1) as f64 / step as f64).floor();
     let psd: Vec<f64> = psd_sum.into_iter().map(|x| x / count).collect();
     let freqs: Vec<f64> = (0..nfft)
         .map(|i| {
