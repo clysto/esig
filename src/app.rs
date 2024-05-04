@@ -4,7 +4,7 @@ use crate::menubar::{MenuBar, MenuItem};
 use crate::open_dialog::OpenDialog;
 use crate::psd_dialog::PsdDialog;
 use crate::signal_plot::{Signal, SignalPlot};
-use crate::utils::human_readable_time;
+use crate::utils::{human_readable_freq, human_readable_time};
 use eframe::egui::{self, Key, Modifiers};
 use rustfft::num_complex::Complex;
 use std::fs::File;
@@ -195,6 +195,9 @@ impl eframe::App for App {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(human_readable_time(self.signal_plot.window_time()));
                     ui.label(format!("{} samples", self.signal_plot.window_samples()));
+                    if let Some(freq) = self.signal_plot.measure_frequency() {
+                        ui.label(human_readable_freq(freq));
+                    }
                 })
             });
         });

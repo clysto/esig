@@ -1,6 +1,6 @@
 use crate::series::MultiResolutionSeries;
-use eframe::egui::{self, Key, Vec2b};
-use egui_plot::{Legend, Line, PlotBounds, PlotPoints};
+use eframe::egui::{self, Color32, Key, Stroke, Vec2b};
+use egui_plot::{Legend, Line, PlotBounds, PlotPoints, Polygon};
 use rustfft::num_complex::Complex;
 
 pub enum Signal {
@@ -19,6 +19,9 @@ pub struct SignalPlot {
     zoom_history: Vec<PlotBounds>,
     bounds: PlotBounds,
     magnitude_visible: bool,
+    measure_active: bool,
+    measure_x1: Option<f64>,
+    measure_x2: Option<f64>,
 }
 
 fn auto_ratio(max_points: usize, max_ratio: usize, nsamples: usize) -> usize {
@@ -45,14 +48,21 @@ impl SignalPlot {
             zoom_history: Vec::new(),
             bounds: PlotBounds::from_min_max([0., 0.], [0., 0.]),
             magnitude_visible: false,
+            measure_active: false,
+            measure_x1: None,
+            measure_x2: None,
         }
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui) {
         let mut z_pressed = false;
+        let mut r_pressed = false;
         let mut space_pressed = false;
         if ui.ctx().input(|i| i.key_down(Key::Z)) {
             z_pressed = true;
+        }
+        if ui.ctx().input(|i| i.key_down(Key::R)) {
+            r_pressed = true;
         }
         if ui.ctx().input(|i| i.key_down(Key::Space)) {
             space_pressed = true;
@@ -70,8 +80,8 @@ impl SignalPlot {
             .auto_bounds(Vec2b::new(false, false))
             .allow_double_click_reset(false)
             .allow_zoom(Vec2b::new(!z_pressed, z_pressed))
-            .allow_drag(space_pressed)
-            .allow_boxed_zoom(!space_pressed)
+            .allow_drag(space_pressed && !r_pressed)
+            .allow_boxed_zoom(!space_pressed && !r_pressed)
             .boxed_zoom_pointer_button(egui::PointerButton::Primary)
             .x_axis_formatter(move |mark, _size, _range| {
                 if x_axis_time {
@@ -114,15 +124,52 @@ impl SignalPlot {
                     }
                     self.reset_to_last_view = false;
                 }
+                if plot_ui.response().clicked_by(egui::PointerButton::Primary) && r_pressed {
+                    self.measure_active = false;
+                    self.measure_x1 = None;
+                    self.measure_x2 = None;
+                }
+                if plot_ui
+                    .response()
+                    .drag_stopped_by(egui::PointerButton::Primary)
+                    && r_pressed
+                {
+                    self.measure_active = false;
+                }
                 if plot_ui
                     .response()
                     .drag_started_by(egui::PointerButton::Primary)
                 {
                     self.zoom_history.push(bounds.clone());
+                    if r_pressed {
+                        self.measure_active = true;
+                        self.measure_x1 = plot_ui.pointer_coordinate().map(|p| p.x);
+                    }
+                }
+
+                if self.measure_active && self.measure_x1.is_some() {
+                    self.measure_x2 = plot_ui.pointer_coordinate().map(|p| p.x);
+                }
+                if self.measure_x1.is_some() && self.measure_x2.is_some() {
+                    let x1 = self.measure_x1.unwrap();
+                    let x2 = self.measure_x2.unwrap();
+                    let x_min = x1.min(x2);
+                    let x_max = x1.max(x2);
+                    let y_min = *bounds.range_y().start() - 100.;
+                    let y_max = *bounds.range_y().end() + 100.;
+                    plot_ui.add(
+                        Polygon::new(PlotPoints::new(vec![
+                            [x_min, y_min],
+                            [x_max, y_min],
+                            [x_max, y_max],
+                            [x_min, y_max],
+                        ]))
+                        .fill_color(Color32::from_white_alpha(4))
+                        .stroke(Stroke::new(1., Color32::WHITE)),
+                    );
                 }
                 bounds = plot_ui.plot_bounds();
                 self.bounds = bounds.clone();
-
                 if self.signal.is_none() {
                     return;
                 }
@@ -220,28 +267,47 @@ impl SignalPlot {
     }
 
     pub fn window_time(&self) -> f64 {
-        let range_x = self.bounds.range_x();
-        let x1 = *range_x.start();
-        let x2 = *range_x.end();
-        (x2 - x1) / self.sample_rate as f64
+        let x1;
+        let x2;
+        if self.measure_x1.is_some() && self.measure_x2.is_some() {
+            x1 = self.measure_x1.unwrap();
+            x2 = self.measure_x2.unwrap();
+        } else {
+            let range_x = self.bounds.range_x();
+            x1 = *range_x.start();
+            x2 = *range_x.end();
+        }
+        (x2 - x1).abs() / self.sample_rate as f64
     }
 
     pub fn window_samples(&self) -> usize {
         if self.signal.is_none() {
             return 0;
         }
-        let range_x = self.bounds.range_x();
-        let x1 = range_x.start().ceil() as usize;
-        let x2 = range_x.end().floor() as usize;
+        let x1;
+        let x2;
+        if let (Some(measure_x1), Some(measure_x2)) = (self.measure_x1, self.measure_x2) {
+            x1 = if measure_x1 < measure_x2 {
+                measure_x1.ceil() as usize
+            } else {
+                measure_x2.ceil() as usize
+            };
+            x2 = if measure_x1 < measure_x2 {
+                measure_x2.floor() as usize
+            } else {
+                measure_x1.floor() as usize
+            };
+        } else {
+            let range_x = self.bounds.range_x();
+            x1 = range_x.start().ceil() as usize;
+            x2 = range_x.end().floor() as usize;
+        }
         let mut index_start = self.range.start;
         let mut index_end = self.range.end;
-        if index_start < x1 {
+        while index_start < x1 {
             index_start += 1;
         }
-        if index_end >= x2 {
-            index_end -= 1;
-        }
-        if index_end >= x2 {
+        while index_end > x2 {
             index_end -= 1;
         }
         index_end + 1 - index_start
@@ -249,5 +315,12 @@ impl SignalPlot {
 
     pub fn toggle_magnitude(&mut self) {
         self.magnitude_visible = !self.magnitude_visible;
+    }
+
+    pub fn measure_frequency(&self) -> Option<f64> {
+        if self.measure_x1.is_some() && self.measure_x2.is_some() {
+            return Some(1. / self.window_time());
+        }
+        None
     }
 }
