@@ -53,6 +53,7 @@ impl App {
     const RETURN: u32 = 4;
     const PSD: u32 = 5;
     const ABOUT: u32 = 6;
+    const MAG: u32 = 7;
 
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let ctx = &cc.egui_ctx;
@@ -93,6 +94,7 @@ impl App {
                     Modifiers::COMMAND,
                     Key::ArrowUp,
                 ),
+                MenuItem::single(Self::MAG, "Toogle Magnitude"),
                 MenuItem::separator(),
                 MenuItem::single_with_shortcut(Self::PSD, "PSD", Modifiers::COMMAND, Key::P),
             ],
@@ -172,6 +174,9 @@ impl App {
                 }
                 &Self::PSD => {
                     self.psd();
+                }
+                &Self::MAG => {
+                    self.signal_plot.toggle_magnitude();
                 }
                 _ => {}
             }

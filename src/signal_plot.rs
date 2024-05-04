@@ -18,6 +18,7 @@ pub struct SignalPlot {
     sample_rate: u32,
     zoom_history: Vec<PlotBounds>,
     bounds: PlotBounds,
+    magnitude_visible: bool,
 }
 
 fn auto_ratio(max_points: usize, max_ratio: usize, nsamples: usize) -> usize {
@@ -43,6 +44,7 @@ impl SignalPlot {
             sample_rate: 1,
             zoom_history: Vec::new(),
             bounds: PlotBounds::from_min_max([0., 0.], [0., 0.]),
+            magnitude_visible: false,
         }
     }
 
@@ -157,20 +159,32 @@ impl SignalPlot {
                         let ratio =
                             auto_ratio(max_samples, signal.max_ratio(), index_end - index_start);
                         let data = signal.get(index_start..index_end, ratio);
-                        let re = PlotPoints::new(
-                            data.iter()
-                                .enumerate()
-                                .map(|(i, y)| [(index_start + i * ratio) as f64, y.re as f64])
-                                .collect(),
-                        );
-                        let im = PlotPoints::new(
-                            data.iter()
-                                .enumerate()
-                                .map(|(i, y)| [(index_start + i * ratio) as f64, y.im as f64])
-                                .collect(),
-                        );
-                        plot_ui.line(Line::new(re).name("inphase"));
-                        plot_ui.line(Line::new(im).name("quadrature"));
+                        if self.magnitude_visible {
+                            let mag = PlotPoints::new(
+                                data.iter()
+                                    .enumerate()
+                                    .map(|(i, y)| {
+                                        [(index_start + i * ratio) as f64, y.norm() as f64]
+                                    })
+                                    .collect(),
+                            );
+                            plot_ui.line(Line::new(mag).name("magnitude"));
+                        } else {
+                            let re = PlotPoints::new(
+                                data.iter()
+                                    .enumerate()
+                                    .map(|(i, y)| [(index_start + i * ratio) as f64, y.re as f64])
+                                    .collect(),
+                            );
+                            let im = PlotPoints::new(
+                                data.iter()
+                                    .enumerate()
+                                    .map(|(i, y)| [(index_start + i * ratio) as f64, y.im as f64])
+                                    .collect(),
+                            );
+                            plot_ui.line(Line::new(re).name("inphase"));
+                            plot_ui.line(Line::new(im).name("quadrature"));
+                        }
                     }
                 }
             });
@@ -231,5 +245,9 @@ impl SignalPlot {
             index_end -= 1;
         }
         index_end + 1 - index_start
+    }
+
+    pub fn toggle_magnitude(&mut self) {
+        self.magnitude_visible = !self.magnitude_visible;
     }
 }
