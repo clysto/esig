@@ -1,7 +1,8 @@
 use crate::series::MultiResolutionSeries;
 use crate::signal_plot::Signal;
-use eframe::egui::Widget;
+use crate::utils::guess_signal_type;
 use eframe::egui::{self, Align2, Grid};
+use eframe::egui::{Key, Widget};
 use rustfft::num_complex::Complex;
 use std::fs::File;
 use std::io::Read;
@@ -44,6 +45,10 @@ impl OpenDialog {
             .resizable(false)
             .default_width(300.)
             .show(ctx, |ui| {
+                let mut enter_press = false;
+                if ui.ctx().input(|i| i.key_pressed(Key::Enter)) {
+                    enter_press = true;
+                }
                 ui.set_width(300.);
                 Grid::new("open-file-options")
                     .num_columns(2)
@@ -56,6 +61,9 @@ impl OpenDialog {
                                 let path = rfd::FileDialog::new().pick_file();
                                 if path.is_some() {
                                     self.path = path.unwrap().to_str().unwrap().to_owned();
+                                    if let Some(signal_type) = guess_signal_type(&self.path) {
+                                        self.signal_type = signal_type;
+                                    }
                                 }
                             }
                             ui.with_layout(
@@ -136,7 +144,7 @@ impl OpenDialog {
                 ui.add_space(30.);
                 ui.horizontal(|ui| {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("OK").clicked() {
+                        if ui.button("OK").clicked() || enter_press {
                             let path = self.path.clone();
                             let signal_type = self.signal_type.clone();
                             self.task = Some(thread::spawn(move || open_file(path, signal_type)));
@@ -150,9 +158,12 @@ impl OpenDialog {
         if self.task.is_some() && self.task.as_ref().unwrap().is_finished() {
             let result = self.task.take().unwrap().join();
             if result.is_ok() {
-                *open = false;
+                let ret = result.unwrap();
                 self.task = None;
-                return Some((result.unwrap().unwrap(), self.path.clone()));
+                if ret.is_some() {
+                    *open = false;
+                    return Some((ret.unwrap(), self.path.clone()));
+                }
             }
         }
         None
