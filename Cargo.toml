@@ -15,7 +15,5 @@ rayon = "1.10.0"
 rfd = "0.14.1"
 rustfft = "6.2.0"
 
-[package.metadata.bundle]
-name = "ESig"
-identifier = "com.maoyachen.com"
-icon = ["assets/icons/512x512@2x.png"]
+[build-dependencies]
+winresource = "0.1.17"
