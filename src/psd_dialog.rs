@@ -21,6 +21,8 @@ impl PsdDialog {
         egui::Window::new("PSD")
             .open(open)
             .resizable(true)
+            .min_size([400.0, 250.0])
+            .default_size([400.0, 250.0])
             .show(ctx, |ui| {
                 egui_plot::Plot::new("psd")
                     .set_margin_fraction(vec2(0., 0.1))
