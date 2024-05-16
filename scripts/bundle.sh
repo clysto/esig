@@ -7,6 +7,7 @@ if [ "$(uname)" == "Darwin" ]; then
     cp scripts/Info.plist target/release/bundle/ESig.app/Contents
     cp target/release/esig target/release/bundle/ESig.app/Contents/MacOS
     cp assets/esig.icns target/release/bundle/ESig.app/Contents/Resources/ESig.icns
+    hdiutil create -format UDZO -srcfolder target/release/bundle/ESig.app target/release/ESig.dmg
 else
     rm -rf target/release/bundle
     mkdir -p target/release/bundle
