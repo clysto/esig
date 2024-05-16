@@ -19,6 +19,19 @@ ESig supports the following file types:
 
 If an unknown file extension is loaded, ESig will default to `*.f32`.
 
+## Download
+
+Download the latest release from the [release page](https://github.com/clysto/esig/releases/latest).
+
+> [!NOTE]
+> **Install on Linux:**
+>
+> ```sh
+> sudo bash ./ESig.run
+> ```
+>
+> This will install ESig to `/usr/local`.
+
 ## Shortcuts
 
 - `Ctrl/Command + O`: Open a file
@@ -29,12 +42,3 @@ If an unknown file extension is loaded, ESig will default to `*.f32`.
 - `Ctrl/Command + Z + Mouse Wheel`: Zoom y-axis
 - `Ctrl/Command + P`: Open PSD window
 - `Ctrl/Command + R`: Reset view
-
-## Install on Linux
-
-Download the latest release from the [release page](https://github.com/clysto/esig/releases) and run the following commands:
-
-```sh
-# install esig to /usr/local
-sudo bash ./ESig.run
-```
