@@ -18,7 +18,7 @@ jobs:
     - name: Build
       run: cargo build --release --verbose
     - name: Bundle
-      run: ./scripts/bundle.sh
+      run: sudo apt-get install -y makeself && ./scripts/bundle.sh
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
@@ -41,7 +41,7 @@ jobs:
         path: target/release/ESig.exe
 
   build-macos:
-    runs-on: macos-latest-large
+    runs-on: macos-13
 
     steps:
     - uses: actions/checkout@v4
