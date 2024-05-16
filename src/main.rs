@@ -11,7 +11,7 @@ mod signal_plot;
 mod utils;
 
 fn main() -> eframe::Result<()> {
-    let icon = include_bytes!("../assets/icons/512x512@2x.png");
+    let icon = include_bytes!("../assets/icon.png");
     let image = image::load_from_memory(icon)
         .expect("Failed to open icon path")
         .to_rgba8();

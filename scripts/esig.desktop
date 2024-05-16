@@ -1,0 +1,9 @@
+[Desktop Entry]
+Encoding=UTF-8
+Comment=A fast signal display tool written in rust and egui, which automatically downsamples and can open large signal files (>200MB).
+Exec=esig
+Icon=esig
+Name=ESig
+Terminal=false
+Type=Application
+MimeType=
