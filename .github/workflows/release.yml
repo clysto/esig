@@ -19,7 +19,7 @@ jobs:
       - name: Bundle
         run: sudo apt-get install -y makeself && ./scripts/bundle.sh
       - name: Zip
-        run: zip -r esig-${{ github.ref_name }}-linux-x86_64.zip target/release/ESig.run
+        run: zip -j -r esig-${{ github.ref_name }}-linux-x86_64.zip target/release/ESig.run
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -36,7 +36,7 @@ jobs:
       - name: Rename
         run: mv target/release/esig.exe target/release/ESig.exe
       - name: Zip
-        run: 7z a esig-${{ github.ref_name }}-windows-x86_64.zip target/release/ESig.exe
+        run: 7z a esig-${{ github.ref_name }}-windows-x86_64.zip ./target/release/ESig.exe
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -53,7 +53,7 @@ jobs:
       - name: Bundle
         run: ./scripts/bundle.sh
       - name: Zip
-        run: zip -r esig-${{ github.ref_name }}-macos-x86_64.zip target/release/ESig.dmg
+        run: zip -j -r esig-${{ github.ref_name }}-macos-x86_64.zip target/release/ESig.dmg
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
