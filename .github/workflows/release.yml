@@ -18,11 +18,13 @@ jobs:
         run: cargo build --release --verbose
       - name: Bundle
         run: sudo apt-get install -y makeself && ./scripts/bundle.sh
+      - name: Zip
+        run: zip -r esig-${{ github.ref_name }}-linux-x86_64.zip target/release/ESig.run
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: esig-linux-x86_64
-          path: target/release/ESig.run
+          path: esig-${{ github.ref_name }}-linux-x86_64.zip
 
   build-windows:
     runs-on: windows-latest
@@ -33,11 +35,13 @@ jobs:
         run: cargo build --release --verbose
       - name: Rename
         run: mv target/release/esig.exe target/release/ESig.exe
+      - name: Zip
+        run: 7z a esig-${{ github.ref_name }}-windows-x86_64.zip target/release/ESig.exe
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: esig-windows-x86_64
-          path: target/release/ESig.exe
+          path: esig-${{ github.ref_name }}-windows-x86_64.zip
 
   build-macos:
     runs-on: macos-13
@@ -48,11 +52,13 @@ jobs:
         run: cargo build --release --verbose
       - name: Bundle
         run: ./scripts/bundle.sh
+      - name: Zip
+        run: zip -r esig-${{ github.ref_name }}-macos-x86_64.zip target/release/ESig.dmg
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: esig-macos-x86_64
-          path: target/release/ESig.dmg
+          path: esig-${{ github.ref_name }}-macos-x86_64.zip
 
   release:
     runs-on: ubuntu-latest
@@ -63,6 +69,7 @@ jobs:
         with:
           path: release
           pattern: esig*
+          merge-multiple: true
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
