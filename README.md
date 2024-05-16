@@ -12,6 +12,13 @@ A fast signal display tool written in rust and egui, which automatically downsam
 
 ![screenshot](misc/screenshot.png)
 
+ESig supports the following file types:
+
+- `.cf32` - Complex 32-bit floating point samples (GNU Radio, osmocom_fft)
+- `.f32` - Real 32-bit floating point samples
+
+If an unknown file extension is loaded, ESig will default to `*.f32`.
+
 ## Shortcuts
 
 - `Ctrl/Command + O`: Open a file
