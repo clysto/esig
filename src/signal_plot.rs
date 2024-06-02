@@ -10,6 +10,7 @@ pub enum Signal {
 
 pub struct SignalPlot {
     signal: Option<Signal>,
+    signal_mag: Option<Signal>,
     range: std::ops::Range<usize>,
     first_render: bool,
     reset_view: bool,
@@ -39,6 +40,7 @@ impl SignalPlot {
     pub fn new() -> Self {
         Self {
             signal: None,
+            signal_mag: None,
             range: 0..0,
             first_render: true,
             reset_view: false,
@@ -205,18 +207,19 @@ impl SignalPlot {
                         self.range = index_start..index_end;
                         let ratio =
                             auto_ratio(max_samples, signal.max_ratio(), index_end - index_start);
-                        let data = signal.get(index_start..index_end, ratio);
                         if self.magnitude_visible {
-                            let mag = PlotPoints::new(
-                                data.iter()
-                                    .enumerate()
-                                    .map(|(i, y)| {
-                                        [(index_start + i * ratio) as f64, y.norm() as f64]
-                                    })
-                                    .collect(),
-                            );
-                            plot_ui.line(Line::new(mag).name("magnitude"));
+                            if let Signal::Real(signal_mag) = self.signal_mag.as_ref().unwrap() {
+                                let data = signal_mag.get(index_start..index_end, ratio);
+                                let mag = PlotPoints::new(
+                                    data.iter()
+                                        .enumerate()
+                                        .map(|(i, &y)| [(index_start + i * ratio) as f64, y as f64])
+                                        .collect(),
+                                );
+                                plot_ui.line(Line::new(mag).name("magnitude"));
+                            }
                         } else {
+                            let data = signal.get(index_start..index_end, ratio);
                             let re = PlotPoints::new(
                                 data.iter()
                                     .enumerate()
@@ -237,9 +240,10 @@ impl SignalPlot {
             });
     }
 
-    pub fn set_signal(&mut self, signal: Signal) {
+    pub fn set_signal(&mut self, signal: Signal, signal_mag: Option<Signal>) {
         self.zoom_history.clear();
         self.signal = Some(signal);
+        self.signal_mag = signal_mag;
     }
 
     pub fn have_signal(&self) -> bool {

@@ -94,7 +94,12 @@ impl App {
                     Modifiers::COMMAND,
                     Key::ArrowUp,
                 ),
-                MenuItem::single(Self::MAG, "Toogle Magnitude"),
+                MenuItem::single_with_shortcut(
+                    Self::MAG,
+                    "Toogle Magnitude",
+                    Modifiers::COMMAND,
+                    Key::M,
+                ),
                 MenuItem::separator(),
                 MenuItem::single_with_shortcut(Self::PSD, "PSD", Modifiers::COMMAND, Key::P),
             ],
@@ -210,11 +215,12 @@ impl eframe::App for App {
             .show(ctx, |ui| {
                 self.signal_plot.show(ui);
 
-                if let Some((sig, path)) = self.open_dialog.show(ctx, &mut self.open_dialog_visible)
+                if let Some((sig, sig_mag, path)) =
+                    self.open_dialog.show(ctx, &mut self.open_dialog_visible)
                 {
                     self.open_dialog_visible = false;
                     self.signal_path = path;
-                    self.signal_plot.set_signal(sig);
+                    self.signal_plot.set_signal(sig, sig_mag);
                     self.signal_plot.reset_view();
                     self.sample_rate = self.open_dialog.sample_rate();
                     self.signal_plot.set_sample_rate(self.sample_rate);

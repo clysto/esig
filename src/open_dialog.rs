@@ -19,7 +19,7 @@ pub struct OpenDialog {
     path: String,
     sample_rate: u32,
     signal_type: SignalType,
-    task: Option<thread::JoinHandle<Option<Signal>>>,
+    task: Option<thread::JoinHandle<(Option<Signal>, Option<Signal>)>>,
 }
 
 impl Default for OpenDialog {
@@ -34,7 +34,7 @@ impl Default for OpenDialog {
 }
 
 impl OpenDialog {
-    pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) -> Option<(Signal, String)> {
+    pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) -> Option<(Signal, Option<Signal>, String)> {
         if self.task.is_some() {
             *open = true;
         }
@@ -160,9 +160,9 @@ impl OpenDialog {
             if result.is_ok() {
                 let ret = result.unwrap();
                 self.task = None;
-                if ret.is_some() {
+                if ret.0.is_some() {
                     *open = false;
-                    return Some((ret.unwrap(), self.path.clone()));
+                    return Some((ret.0.unwrap(), ret.1, self.path.clone()));
                 }
             }
         }
@@ -174,7 +174,7 @@ impl OpenDialog {
     }
 }
 
-fn open_file(path: String, signal_type: SignalType) -> Option<Signal> {
+fn open_file(path: String, signal_type: SignalType) -> (Option<Signal>, Option<Signal>) {
     let result = File::open(path);
     if let Ok(mut file) = result {
         let mut buffer = Vec::new();
@@ -184,14 +184,20 @@ fn open_file(path: String, signal_type: SignalType) -> Option<Signal> {
                 let len = buffer.len() / 4;
                 let ptr = buffer.as_ptr() as *const f32;
                 let slice = slice::from_raw_parts(ptr, len);
-                return Some(Signal::Real(MultiResolutionSeries::build(slice, 2048)));
+                return (
+                    Some(Signal::Real(MultiResolutionSeries::build(slice, 2048))),
+                    None,
+                );
             } else {
                 let len = buffer.len() / 8;
                 let ptr = buffer.as_ptr() as *const Complex<f32>;
                 let slice = slice::from_raw_parts(ptr, len);
-                return Some(Signal::Complex(MultiResolutionSeries::build(slice, 2048)));
+                let mag_slide = slice.iter().map(|x| x.norm()).collect::<Vec<f32>>();
+                let sig = Signal::Complex(MultiResolutionSeries::build(slice, 2048));
+                let mag = Signal::Real(MultiResolutionSeries::build(mag_slide.as_slice(), 2048));
+                return (Some(sig), Some(mag));
             }
         }
     }
-    None
+    (None, None)
 }
