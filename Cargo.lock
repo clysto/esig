@@ -1253,7 +1253,7 @@ checksum = "a0474425d51df81997e2f90a21591180b38eccf27292d755f3e30750225c175b"
 
 [[package]]
 name = "esig"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "eframe",
  "egui_plot",
