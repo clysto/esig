@@ -1,5 +1,5 @@
 use crate::series::MultiResolutionSeries;
-use eframe::egui::{self, Color32, Key, Stroke, Vec2b};
+use eframe::egui::{self, Color32, Key, Vec2b};
 use egui_plot::{Legend, Line, PlotBounds, PlotPoints, Polygon};
 use rustfft::num_complex::Complex;
 
@@ -99,7 +99,22 @@ impl SignalPlot {
                     plot_ui.set_plot_bounds(PlotBounds::from_min_max([0., -0.99], [1000., 1.]));
                     self.first_render = false;
                 }
+
                 let mut bounds = plot_ui.plot_bounds();
+                if *bounds.range_y().start() < -9999999. {
+                    plot_ui.set_plot_bounds(PlotBounds::from_min_max(
+                        [*bounds.range_x().start(), -9999999.],
+                        [*bounds.range_x().end(), *bounds.range_y().end()],
+                    ));
+                }
+                if *bounds.range_y().end() > 9999999. {
+                    plot_ui.set_plot_bounds(PlotBounds::from_min_max(
+                        [*bounds.range_x().start(), *bounds.range_y().start()],
+                        [*bounds.range_x().end(), 9999999.],
+                    ));
+                }
+                bounds = plot_ui.plot_bounds();
+
                 if self.reset_view {
                     if let Some(sig) = self.signal.as_ref() {
                         match sig {
@@ -157,8 +172,8 @@ impl SignalPlot {
                     let x2 = self.measure_x2.unwrap();
                     let x_min = x1.min(x2);
                     let x_max = x1.max(x2);
-                    let y_min = *bounds.range_y().start() - 100.;
-                    let y_max = *bounds.range_y().end() + 100.;
+                    let y_min = -9999999.;
+                    let y_max = 9999999.;
                     plot_ui.add(
                         Polygon::new(PlotPoints::new(vec![
                             [x_min, y_min],
@@ -166,8 +181,7 @@ impl SignalPlot {
                             [x_max, y_max],
                             [x_min, y_max],
                         ]))
-                        .fill_color(Color32::from_white_alpha(4))
-                        .stroke(Stroke::new(1., Color32::WHITE)),
+                        .fill_color(Color32::from_white_alpha(4)), // .stroke(Stroke::new(1., Color32::WHITE)),
                     );
                 }
                 bounds = plot_ui.plot_bounds();
