@@ -2,23 +2,23 @@ use eframe::egui::{self, Button, Key, KeyboardShortcut, Modifiers, Widget};
 use std::collections::HashMap;
 
 #[derive(Clone)]
-pub struct MenuItem {
-    id: u32,
+pub struct MenuItem<T: Clone> {
+    id: Option<T>,
     name: String,
     shortcut: Option<KeyboardShortcut>,
-    children: Vec<MenuItem>,
+    children: Vec<MenuItem<T>>,
 }
 
-pub struct MenuBar {
-    menu_items: Vec<MenuItem>,
-    shortcuts_map: HashMap<KeyboardShortcut, u32>,
-    action: Option<u32>,
+pub struct MenuBar<T: Clone> {
+    menu_items: Vec<MenuItem<T>>,
+    shortcuts_map: HashMap<KeyboardShortcut, T>,
+    action: Option<T>,
 }
 
-impl MenuItem {
-    pub fn new(name: &str, children: &[MenuItem]) -> Self {
+impl<T: Clone> MenuItem<T> {
+    pub fn new(name: &str, children: &[MenuItem<T>]) -> Self {
         Self {
-            id: u32::MAX,
+            id: None,
             name: name.to_string(),
             shortcut: None,
             children: children.to_vec(),
@@ -27,41 +27,43 @@ impl MenuItem {
 
     pub fn separator() -> Self {
         Self {
-            id: u32::MAX,
+            id: None,
             name: "-".to_string(),
             shortcut: None,
             children: Vec::new(),
         }
     }
 
-    pub fn single(id: u32, name: &str) -> Self {
+    pub fn single(id: T, name: &str) -> Self {
         Self {
-            id,
+            id: Some(id),
             name: name.to_string(),
             shortcut: None,
             children: Vec::new(),
         }
     }
 
-    pub fn single_with_shortcut(id: u32, name: &str, modifiers: Modifiers, key: Key) -> Self {
+    pub fn single_with_shortcut(id: T, name: &str, modifiers: Modifiers, key: Key) -> Self {
         Self {
-            id,
+            id: Some(id),
             name: name.to_string(),
             shortcut: Some(KeyboardShortcut::new(modifiers, key)),
             children: Vec::new(),
         }
     }
 
-    pub fn register_shortcut(&self, shortcuts_map: &mut HashMap<KeyboardShortcut, u32>) {
+    pub fn register_shortcut(&self, shortcuts_map: &mut HashMap<KeyboardShortcut, T>) {
         if let Some(shortcut) = self.shortcut.as_ref() {
-            shortcuts_map.insert(shortcut.clone(), self.id);
+            if let Some(id) = &self.id {
+                shortcuts_map.insert(shortcut.clone(), id.clone());
+            }
         }
         for child in self.children.iter() {
             child.register_shortcut(shortcuts_map);
         }
     }
 
-    pub fn show(&mut self, ui: &mut egui::Ui) -> Option<u32> {
+    pub fn show(&mut self, ui: &mut egui::Ui) -> Option<T> {
         let mut id = None;
         if !self.children.is_empty() {
             ui.menu_button(&self.name, |ui| {
@@ -79,14 +81,14 @@ impl MenuItem {
                     .clicked()
                 {
                     ui.close_menu();
-                    id = Some(self.id);
+                    id = self.id.clone();
                 }
             } else if self.name == "-" {
                 ui.separator();
             } else {
                 if Button::new(&self.name).ui(ui).clicked() {
                     ui.close_menu();
-                    id = Some(self.id);
+                    id = self.id.clone();
                 }
             }
         }
@@ -94,7 +96,7 @@ impl MenuItem {
     }
 }
 
-impl MenuBar {
+impl<T: Clone> MenuBar<T> {
     pub fn new() -> Self {
         Self {
             menu_items: Vec::new(),
@@ -103,7 +105,7 @@ impl MenuBar {
         }
     }
 
-    pub fn add(&mut self, item: MenuItem) {
+    pub fn add(&mut self, item: MenuItem<T>) {
         item.register_shortcut(&mut self.shortcuts_map);
         self.menu_items.push(item);
     }
@@ -112,14 +114,12 @@ impl MenuBar {
         self.action = None;
         egui::menu::bar(ui, |ui| {
             for item in self.menu_items.iter_mut() {
-                if let Some(id) = item.show(ui) {
-                    self.action = Some(id);
-                }
+                self.action = item.show(ui);
             }
         });
     }
 
-    pub fn comsume_action(&mut self, ui: &egui::Ui) -> Option<&u32> {
+    pub fn comsume_action(&mut self, ui: &egui::Ui) -> Option<&T> {
         if self.action.is_some() {
             return self.action.as_ref();
         }

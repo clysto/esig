@@ -11,9 +11,21 @@ use std::fs::File;
 use std::io::Write;
 use std::slice;
 
+#[derive(Clone)]
+enum MenuAction {
+    Open,
+    Export,
+    Quit,
+    Reset,
+    Return,
+    Psd,
+    About,
+    Mag,
+}
+
 pub struct App {
     open_dialog: OpenDialog,
-    menubar: MenuBar,
+    menubar: MenuBar<MenuAction>,
     psd_dialog: PsdDialog,
     export_dialog: ExportDialog,
     export_dialog_visible: bool,
@@ -46,15 +58,6 @@ impl Default for App {
 }
 
 impl App {
-    const OPEN: u32 = 0;
-    const EXPORT: u32 = 1;
-    const QUIT: u32 = 2;
-    const RESET: u32 = 3;
-    const RETURN: u32 = 4;
-    const PSD: u32 = 5;
-    const ABOUT: u32 = 6;
-    const MAG: u32 = 7;
-
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let ctx = &cc.egui_ctx;
         let mut fonts = egui::FontDefinitions::default();
@@ -78,35 +81,55 @@ impl App {
         self.menubar.add(MenuItem::new(
             "File",
             &[
-                MenuItem::single_with_shortcut(Self::OPEN, "Open", Modifiers::COMMAND, Key::O),
-                MenuItem::single_with_shortcut(Self::EXPORT, "Export", Modifiers::COMMAND, Key::S),
+                MenuItem::single_with_shortcut(
+                    MenuAction::Open,
+                    "Open",
+                    Modifiers::COMMAND,
+                    Key::O,
+                ),
+                MenuItem::single_with_shortcut(
+                    MenuAction::Export,
+                    "Export",
+                    Modifiers::COMMAND,
+                    Key::S,
+                ),
                 MenuItem::separator(),
-                MenuItem::single_with_shortcut(Self::QUIT, "Quit", Modifiers::COMMAND, Key::Q),
+                MenuItem::single_with_shortcut(
+                    MenuAction::Quit,
+                    "Quit",
+                    Modifiers::COMMAND,
+                    Key::Q,
+                ),
             ],
         ));
         self.menubar.add(MenuItem::new(
             "View",
             &[
-                MenuItem::single_with_shortcut(Self::RESET, "Reset", Modifiers::COMMAND, Key::R),
                 MenuItem::single_with_shortcut(
-                    Self::RETURN,
+                    MenuAction::Reset,
+                    "Reset",
+                    Modifiers::COMMAND,
+                    Key::R,
+                ),
+                MenuItem::single_with_shortcut(
+                    MenuAction::Return,
                     "Return",
                     Modifiers::COMMAND,
                     Key::ArrowUp,
                 ),
                 MenuItem::single_with_shortcut(
-                    Self::MAG,
+                    MenuAction::Mag,
                     "Toogle Magnitude",
                     Modifiers::COMMAND,
                     Key::M,
                 ),
                 MenuItem::separator(),
-                MenuItem::single_with_shortcut(Self::PSD, "PSD", Modifiers::COMMAND, Key::P),
+                MenuItem::single_with_shortcut(MenuAction::Psd, "PSD", Modifiers::COMMAND, Key::P),
             ],
         ));
         self.menubar.add(MenuItem::new(
             "Help",
-            &[MenuItem::single(Self::ABOUT, "About")],
+            &[MenuItem::single(MenuAction::About, "About")],
         ));
     }
 
@@ -160,27 +183,27 @@ impl App {
         self.menubar.show(ui);
         if let Some(action) = self.menubar.comsume_action(ui) {
             match action {
-                &Self::OPEN => {
+                &MenuAction::Open => {
                     self.open_dialog_visible = true;
                 }
-                &Self::EXPORT => {
+                &MenuAction::Export => {
                     if self.signal_plot.have_signal() {
                         self.export_dialog_visible = true;
                     }
                 }
-                &Self::QUIT => {
+                &MenuAction::Quit => {
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                 }
-                &Self::RESET => {
+                &MenuAction::Reset => {
                     self.signal_plot.reset_view();
                 }
-                &Self::RETURN => {
+                &MenuAction::Return => {
                     self.signal_plot.return_last_view();
                 }
-                &Self::PSD => {
+                &MenuAction::Psd => {
                     self.psd();
                 }
-                &Self::MAG => {
+                &MenuAction::Mag => {
                     self.signal_plot.toggle_magnitude();
                 }
                 _ => {}
