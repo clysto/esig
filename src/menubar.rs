@@ -114,7 +114,9 @@ impl<T: Clone> MenuBar<T> {
         self.action = None;
         egui::menu::bar(ui, |ui| {
             for item in self.menu_items.iter_mut() {
-                self.action = item.show(ui);
+                if let Some(action) = item.show(ui) {
+                    self.action = Some(action);
+                }
             }
         });
     }

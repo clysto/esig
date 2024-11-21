@@ -35,6 +35,8 @@ pub struct App {
     psd_visiable: bool,
     signal_plot: SignalPlot,
     signal_path: String,
+    err_msg: Option<String>,
+    err_msg_visible: bool,
 }
 
 impl Default for App {
@@ -51,6 +53,8 @@ impl Default for App {
             psd_visiable: false,
             signal_plot: SignalPlot::new(),
             signal_path: "".to_owned(),
+            err_msg: None,
+            err_msg_visible: false,
         };
         ret.setup();
         ret
@@ -133,7 +137,7 @@ impl App {
         ));
     }
 
-    pub fn psd(&mut self) {
+    pub fn psd(&mut self) -> Result<(), &str> {
         if self.signal_plot.have_signal() {
             self.psd_visiable = true;
             let mut input = vec![];
@@ -149,10 +153,16 @@ impl App {
                     }
                 }
             }
+            if input.len() < 2048 {
+                return Err("Signal length is too short!");
+            } else if input.len() > 50000 {
+                return Err("Signal length is too long, it may take a long time to compute!");
+            }
             let (freqs, psd) = compute_psd(&input, 1024, 0, self.sample_rate as f64);
             self.psd_dialog.set_data(freqs, psd);
             self.psd_dialog_visible = true;
         }
+        Ok(())
     }
 
     pub fn export(&self, path: &str) {
@@ -201,7 +211,10 @@ impl App {
                     self.signal_plot.return_last_view();
                 }
                 &MenuAction::Psd => {
-                    self.psd();
+                    if let Err(msg) = self.psd() {
+                        self.err_msg = Some(msg.to_owned());
+                        self.err_msg_visible = true;
+                    }
                 }
                 &MenuAction::Mag => {
                     self.signal_plot.toggle_magnitude();
@@ -258,6 +271,16 @@ impl eframe::App for App {
                 }
 
                 self.psd_dialog.show(ctx, &mut self.psd_dialog_visible);
+
+                if let Some(msg) = &self.err_msg {
+                    egui::Window::new("Error")
+                        .open(&mut self.err_msg_visible)
+                        .resizable(false)
+                        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::new(0., 0.))
+                        .show(ctx, |ui| {
+                            ui.label(msg);
+                        });
+                }
             });
     }
 }
