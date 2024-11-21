@@ -34,7 +34,11 @@ impl Default for OpenDialog {
 }
 
 impl OpenDialog {
-    pub fn show(&mut self, ctx: &egui::Context, open: &mut bool) -> Option<(Signal, Option<Signal>, String)> {
+    pub fn show(
+        &mut self,
+        ctx: &egui::Context,
+        open: &mut bool,
+    ) -> Option<(Signal, Option<Signal>, String)> {
         if self.task.is_some() {
             *open = true;
         }
@@ -127,7 +131,7 @@ impl OpenDialog {
                             })
                             // .width(ui.available_width())
                             .show_ui(ui, |ui| {
-                                ui.style_mut().wrap = Some(false);
+                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                                 ui.selectable_value(
                                     &mut self.signal_type,
                                     SignalType::Float32,

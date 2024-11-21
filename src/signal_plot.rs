@@ -85,7 +85,7 @@ impl SignalPlot {
             .allow_drag(space_pressed && !r_pressed)
             .allow_boxed_zoom(!space_pressed && !r_pressed)
             .boxed_zoom_pointer_button(egui::PointerButton::Primary)
-            .x_axis_formatter(move |mark, _size, _range| {
+            .x_axis_formatter(move |mark, _range| {
                 if x_axis_time {
                     let time = mark.value as f64 / sample_rate as f64;
                     format!("{}", time)
