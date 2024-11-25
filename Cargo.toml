@@ -10,9 +10,9 @@ description = "A fast signal display tool written in rust and egui, which automa
 eframe = "0.29.0"
 egui_plot = "0.29.0"
 emath = "0.29.0"
+egui-file-dialog = "0.7.0"
 image = "0.25.1"
 rayon = "1.10.0"
-rfd = "0.15.1"
 rustfft = "6.2.0"
 
 [build-dependencies]

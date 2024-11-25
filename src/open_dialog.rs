@@ -3,6 +3,7 @@ use crate::signal_plot::Signal;
 use crate::utils::guess_signal_type;
 use eframe::egui::{self, Align2, Grid};
 use eframe::egui::{Key, Widget};
+use egui_file_dialog::FileDialog;
 use rustfft::num_complex::Complex;
 use std::fs::File;
 use std::io::Read;
@@ -20,6 +21,7 @@ pub struct OpenDialog {
     sample_rate: u32,
     signal_type: SignalType,
     task: Option<thread::JoinHandle<(Option<Signal>, Option<Signal>)>>,
+    file_dialog: FileDialog,
 }
 
 impl Default for OpenDialog {
@@ -29,6 +31,8 @@ impl Default for OpenDialog {
             sample_rate: 2000000,
             signal_type: SignalType::Float32,
             task: None,
+            file_dialog: FileDialog::new()
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::new(0., 0.)),
         }
     }
 }
@@ -62,13 +66,7 @@ impl OpenDialog {
                         ui.label("File");
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui.button("Browse").clicked() {
-                                let path = rfd::FileDialog::new().pick_file();
-                                if path.is_some() {
-                                    self.path = path.unwrap().to_str().unwrap().to_owned();
-                                    if let Some(signal_type) = guess_signal_type(&self.path) {
-                                        self.signal_type = signal_type;
-                                    }
-                                }
+                                self.file_dialog.select_file();
                             }
                             ui.with_layout(
                                 egui::Layout::top_down_justified(egui::Align::LEFT),
@@ -157,7 +155,14 @@ impl OpenDialog {
                             ui.spinner();
                         }
                     })
-                })
+                });
+                self.file_dialog.update(ctx);
+                if let Some(path) = self.file_dialog.take_selected() {
+                    self.path = path.to_str().unwrap().to_owned();
+                    if let Some(signal_type) = guess_signal_type(&self.path) {
+                        self.signal_type = signal_type;
+                    }
+                }
             });
         if self.task.is_some() && self.task.as_ref().unwrap().is_finished() {
             let result = self.task.take().unwrap().join();

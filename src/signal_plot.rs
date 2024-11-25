@@ -1,6 +1,6 @@
 use crate::series::MultiResolutionSeries;
 use eframe::egui::{self, Color32, Key, Vec2b};
-use egui_plot::{Legend, Line, PlotBounds, PlotPoints, Polygon};
+use egui_plot::{Legend, Line, PlotBounds, PlotPoints};
 use rustfft::num_complex::Complex;
 
 pub enum Signal {
@@ -77,7 +77,9 @@ impl SignalPlot {
         };
         let sample_rate = self.sample_rate;
         let x_axis_time = self.x_axis_time;
-        egui_plot::Plot::new("signal")
+        let mut measure_x1_pos = egui::pos2(0., 0.);
+        let mut measure_x2_pos = egui::pos2(0., 0.);
+        let response = egui_plot::Plot::new("signal")
             .legend(Legend::default())
             .auto_bounds(Vec2b::new(false, false))
             .allow_double_click_reset(false)
@@ -172,17 +174,8 @@ impl SignalPlot {
                     let x2 = self.measure_x2.unwrap();
                     let x_min = x1.min(x2);
                     let x_max = x1.max(x2);
-                    let y_min = -9999999.;
-                    let y_max = 9999999.;
-                    plot_ui.add(
-                        Polygon::new(PlotPoints::new(vec![
-                            [x_min, y_min],
-                            [x_max, y_min],
-                            [x_max, y_max],
-                            [x_min, y_max],
-                        ]))
-                        .fill_color(Color32::from_white_alpha(4)), // .stroke(Stroke::new(1., Color32::WHITE)),
-                    );
+                    measure_x1_pos = plot_ui.screen_from_plot(egui_plot::PlotPoint::new(x_min, 0.));
+                    measure_x2_pos = plot_ui.screen_from_plot(egui_plot::PlotPoint::new(x_max, 0.));
                 }
                 bounds = plot_ui.plot_bounds();
                 self.bounds = bounds.clone();
@@ -252,9 +245,34 @@ impl SignalPlot {
                     }
                 }
             });
+        let rect = response.response.rect;
+        if self.measure_x1.is_some() && self.measure_x2.is_some() {
+            ui.painter().vline(
+                measure_x1_pos.x,
+                rect.y_range(),
+                egui::Stroke::new(2., Color32::WHITE),
+            );
+            ui.painter().vline(
+                measure_x2_pos.x,
+                rect.y_range(),
+                egui::Stroke::new(2., Color32::WHITE),
+            );
+            let left_mask = egui::Rect::from_x_y_ranges(
+                egui::Rangef::new(rect.min.x, measure_x1_pos.x),
+                rect.y_range(),
+            );
+            let right_mask = egui::Rect::from_x_y_ranges(
+                egui::Rangef::new(measure_x2_pos.x, rect.max.x),
+                rect.y_range(),
+            );
+            ui.painter().rect_filled(left_mask, 0., Color32::from_black_alpha(150));
+            ui.painter().rect_filled(right_mask, 0., Color32::from_black_alpha(150));
+        }
     }
 
     pub fn set_signal(&mut self, signal: Signal, signal_mag: Option<Signal>) {
+        self.measure_x1 = None;
+        self.measure_x2 = None;
         self.zoom_history.clear();
         self.signal = Some(signal);
         self.signal_mag = signal_mag;
@@ -327,6 +345,9 @@ impl SignalPlot {
         }
         while index_end > x2 {
             index_end -= 1;
+        }
+        if index_end < index_start {
+            return 0;
         }
         index_end + 1 - index_start
     }
